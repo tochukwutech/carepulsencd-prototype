@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CarePulse NCD — Screen Prototype</title>
+<style>
+  :root{
+    --sage:#5FA98A; --ochre:#D6A24C; --clay:#C1592F; --stone:#8A8478; --danger:#D9534F;
+    --c-bg:#101E1B; --c-surface:#16302A; --c-surface2:#1C3830; --c-border:#2C4B41;
+    --c-text:#EEF4EF; --c-muted:#9FB8AE;
+    --p-bg:#FBF6EC; --p-surface:#FFFFFF; --p-border:#E5DAC6; --p-text:#2B2A28; --p-muted:#7A7266;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--c-bg); color:var(--c-text); min-height:100vh; }
+  body.patient-mode{ background:var(--p-bg); color:var(--p-text); }
+  h1,h2,h3,.serif{ font-family:Georgia,'Iowan Old Style','Times New Roman',serif; }
+  a{ color:inherit; }
+
+  /* ---- shell ---- */
+  .shell{ display:flex; min-height:100vh; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 22px; border-bottom:1px solid var(--c-border); }
+  body.patient-mode .topbar{ border-bottom:1px solid var(--p-border); }
+  .wordmark{ display:flex; align-items:baseline; gap:8px; }
+  .wordmark .word{ font-size:20px; font-weight:600; }
+  .wordmark .badge{ font-size:10.5px; padding:2px 8px; border-radius:20px; background:var(--sage); color:#0d1a17; font-weight:700; }
+  .modeswitch{ display:flex; border:1px solid var(--c-border); border-radius:999px; overflow:hidden; }
+  body.patient-mode .modeswitch{ border-color:var(--p-border); }
+  .modeswitch button{ padding:7px 16px; background:transparent; border:none; cursor:pointer; color:inherit; font-size:13px; font-family:inherit; }
+  .modeswitch button.active.clinic-btn{ background:var(--c-surface2); }
+  .modeswitch button.active.patient-btn{ background:var(--clay); color:#fff; }
+  .dsys-link{ background:none; border:none; color:var(--c-muted); font-size:12px; cursor:pointer; text-decoration:underline; font-family:inherit; }
+
+  /* ---- clinic layout: sidebar + content ---- */
+  #clinic-shell{ display:none; }
+  #clinic-shell.active{ display:flex; width:100%; }
+  .sidenav{ width:210px; border-right:1px solid var(--c-border); padding:18px 10px; flex-shrink:0; }
+  .sidenav .nav-item{ display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:8px; cursor:pointer; font-size:13.5px; color:var(--c-muted); margin-bottom:2px; }
+  .sidenav .nav-item:hover{ background:var(--c-surface); color:var(--c-text); }
+  .sidenav .nav-item.active{ background:var(--c-surface2); color:var(--c-text); font-weight:600; }
+  .sidenav .nav-num{ width:18px; height:18px; border-radius:5px; background:var(--c-surface); display:flex; align-items:center; justify-content:center; font-size:10.5px; flex-shrink:0; }
+  .nav-item.active .nav-num{ background:var(--sage); color:#0d1a17; }
+  .content{ flex:1; padding:24px 30px 60px; max-width:1080px; }
+  .screen{ display:none; }
+  .screen.active{ display:block; animation:fadein .18s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .crumb{ font-size:11.5px; color:var(--c-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.03em; }
+  .screen-title{ font-size:22px; margin:0 0 18px; }
+
+  .panel{ background:var(--c-surface); border:1px solid var(--c-border); border-radius:10px; padding:16px; }
+  .subpanel{ background:var(--c-surface2); border:1px solid var(--c-border); border-radius:9px; padding:14px; }
+  .grid2{ display:grid; grid-template-columns:1.1fr .9fr; gap:16px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+
+  .btn{ border:1px solid var(--c-border); background:var(--c-surface2); color:var(--c-text); padding:7px 13px; border-radius:7px; cursor:pointer; font-size:13px; font-family:inherit; }
+  .btn:hover{ border-color:var(--sage); }
+  .btn.primary{ background:var(--sage); color:#0d1a17; border-color:var(--sage); font-weight:600; }
+  .btn.clay{ background:var(--clay); color:#fff; border-color:var(--clay); font-weight:600; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn.small{ padding:4px 9px; font-size:12px; }
+  .btn.ghost{ background:transparent; }
+
+  .kpi-card{ background:var(--c-surface2); border:1px solid var(--c-border); border-radius:9px; padding:14px; }
+  .kpi-card .kpi-num{ font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .kpi-card .kpi-label{ font-size:12px; color:var(--c-muted); margin-top:2px; }
+
+  .tier-pill{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+  .tier-stable{ background:rgba(95,169,138,.18); color:var(--sage); border:1px solid rgba(95,169,138,.4); }
+  .tier-watch{ background:rgba(214,162,76,.18); color:var(--ochre); border:1px solid rgba(214,162,76,.4); }
+  .tier-high_risk{ background:rgba(193,89,47,.2); color:#e2895f; border:1px solid rgba(193,89,47,.45); }
+  .tier-unscored{ background:rgba(138,132,120,.18); color:var(--stone); border:1px solid rgba(138,132,120,.4); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ text-align:left; padding:7px 6px; border-bottom:1px solid var(--c-border); }
+  th{ color:var(--c-muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.02em; }
+  tr.clickable{ cursor:pointer; }
+  tr.clickable:hover td{ background:var(--c-surface2); }
+
+  .searchbox,.filterselect{ padding:8px 10px; border-radius:7px; border:1px solid var(--c-border); background:var(--c-bg); color:var(--c-text); font-size:13px; }
+  .toolbar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+
+  .patient-card-row{ display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid var(--c-border); border-radius:8px; margin-bottom:6px; }
+  .patient-card-row:hover{ border-color:var(--sage); cursor:pointer; }
+
+  .explain-box{ margin-top:10px; padding:10px; border-radius:7px; background:var(--c-bg); border:1px solid var(--c-border); font-size:12.5px; color:var(--c-muted); line-height:1.5; }
+  .explain-box.warn{ border-color:var(--clay); color:#e2895f; }
+
+  .route-card{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid var(--c-border); border-radius:8px; background:var(--c-bg); margin-bottom:8px; }
+  .route-card .fname{ font-size:13.5px; font-weight:600; }
+  .route-card .fmeta{ font-size:11.5px; color:var(--c-muted); margin-top:2px; }
+  .score-bar{ width:80px; height:5px; background:var(--c-border); border-radius:4px; overflow:hidden; margin-top:4px;}
+  .score-bar span{ display:block; height:100%; background:var(--sage); }
+
+  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+  .bar-label{ width:100px; font-size:12px; color:var(--c-muted); flex-shrink:0; }
+  .bar-track{ flex:1; height:16px; background:var(--c-bg); border-radius:4px; overflow:hidden; border:1px solid var(--c-border);}
+  .bar-count{ width:26px; text-align:right; font-size:12px; color:var(--c-muted); }
+  .heat-good{ color:var(--sage); } .heat-mid{ color:var(--ochre); } .heat-full{ color:#e2895f; }
+
+  /* states */
+  .skeleton{ background:linear-gradient(90deg, var(--c-surface2) 25%, var(--c-border) 37%, var(--c-surface2) 63%); background-size:400% 100%; animation:shimmer 1.3s ease infinite; border-radius:6px; }
+  @keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+  .empty-state,.error-state{ text-align:center; padding:34px 16px; color:var(--c-muted); font-size:13.5px; }
+  .error-state{ color:#e2895f; }
+  .empty-state .glyph,.error-state .glyph{ font-size:22px; display:block; margin-bottom:8px; }
+
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:50; }
+  .modal-backdrop.active{ display:flex; }
+  .modal{ background:var(--c-surface); border:1px solid var(--c-border); border-radius:12px; padding:22px; width:100%; max-width:440px; max-height:85vh; overflow:auto; }
+  .field{ margin-bottom:10px; display:flex; flex-direction:column; gap:4px; }
+  .field label{ font-size:12px; color:var(--c-muted); }
+  .field input,.field select{ padding:8px 10px; border-radius:7px; border:1px solid var(--c-border); background:var(--c-bg); color:var(--c-text); font-size:13.5px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--c-surface2); border:1px solid var(--sage); color:var(--c-text); padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease; z-index:60; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+
+  /* ---- patient portal ---- */
+  #patient-shell{ display:none; width:100%; flex-direction:column; align-items:center; }
+  #patient-shell.active{ display:flex; }
+  .phone-frame{ width:100%; max-width:420px; padding:20px 18px 90px; position:relative; min-height:calc(100vh - 60px); }
+  .p-screen{ display:none; }
+  .p-screen.active{ display:block; animation:fadein .18s ease; }
+  .p-topline{ font-size:12px; color:var(--p-muted); margin-bottom:14px; }
+  .status-card{ border-radius:14px; padding:22px; margin-bottom:18px; border:1px solid var(--p-border); }
+  .status-card.stable{ background:#F1F7F1; border-color:#cfe4cf; }
+  .status-card.watch{ background:#FBF2DF; border-color:#eed9ab; }
+  .status-card.high_risk{ background:#FCEDE6; border-color:#f0c3ab; }
+  .status-card.unscored{ background:#F3F1EC; border-color:var(--p-border); }
+  .status-card .icon{ font-size:26px; }
+  .status-card h3{ margin:10px 0 6px; font-size:19px; }
+  .status-card p{ margin:0; font-size:14.5px; line-height:1.55; color:#454138; }
+  .p-card{ background:var(--p-surface); border:1px solid var(--p-border); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .p-card h4{ margin:0 0 12px; font-size:13px; color:var(--p-muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+  .p-fact{ font-size:15px; margin-bottom:4px; }
+  .p-fact.dim{ color:var(--p-muted); font-size:13.5px; }
+  .status-tag{ display:inline-block; font-size:12px; font-weight:600; padding:3px 10px; border-radius:20px; margin-bottom:10px; }
+  .status-tag.confirmed{ background:#e4f2e6; color:#3f7a52; }
+  .status-tag.none{ background:#efeae0; color:var(--p-muted); }
+  .fake-map{ height:150px; border-radius:10px; background:
+      repeating-linear-gradient(45deg, #eee3cf, #eee3cf 8px, #f4ecdd 8px, #f4ecdd 16px);
+      border:1px solid var(--p-border); display:flex; align-items:center; justify-content:center;
+      color:var(--p-muted); font-size:12.5px; margin-bottom:14px; position:relative; }
+  .fake-map .pin{ font-size:20px; }
+  .directions-btn{ background:var(--clay); color:#fff; border:none; padding:11px 16px; border-radius:8px; font-size:14px; cursor:pointer; font-family:inherit; font-weight:600; width:100%; }
+  .p-empty{ font-size:14px; color:var(--p-muted); text-align:center; padding:20px 0; }
+  .p-nav{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:420px;
+      background:var(--p-surface); border-top:1px solid var(--p-border); display:flex; padding:8px 6px 12px; }
+  .p-nav button{ flex:1; background:none; border:none; font-family:inherit; padding:6px 4px; cursor:pointer; color:var(--p-muted); font-size:11.5px; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .p-nav button .p-nav-icon{ font-size:17px; }
+  .p-nav button.active{ color:var(--clay); font-weight:700; }
+  .id-picker{ background:var(--p-surface); border:1px solid var(--p-border); border-radius:12px; padding:16px; margin-bottom:18px; }
+  .id-picker select{ width:100%; padding:10px 11px; border-radius:8px; border:1px solid var(--p-border); font-size:14px; background:#fff; color:var(--p-text); margin-top:8px; }
+  .footnote{ margin-top:16px; font-size:11.5px; color:var(--p-muted); line-height:1.5; text-align:center; }
+
+  /* design system modal */
+  .dsys-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .dsys-block{ margin-bottom:16px; }
+  .dsys-block h5{ margin:0 0 8px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--c-muted); }
+  .swatch-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+</style>
+</head>
+<body class="clinic-mode">
+
+<div class="topbar">
+  <div class="wordmark"><span class="word serif">CarePulse</span><span class="badge">NCD</span></div>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <button class="dsys-link" onclick="openDsys()">Component &amp; state reference</button>
+    <div class="modeswitch">
+      <button class="clinic-btn active" onclick="switchMode('clinic')">Clinic</button>
+      <button class="patient-btn" onclick="switchMode('patient')">Patient Portal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CLINIC SHELL ===================== -->
+<div class="shell" id="clinic-shell" class="active">
+<div class="sidenav">
+  <div class="nav-item active" data-screen="dashboard" onclick="goScreen('dashboard')"><span class="nav-num">1</span> Dashboard</div>
+  <div class="nav-item" data-screen="registry" onclick="goScreen('registry')"><span class="nav-num">2</span> Patient Registry</div>
+  <div class="nav-item" data-screen="profile" onclick="goScreen('profile')"><span class="nav-num">3</span> Patient Profile</div>
+  <div class="nav-item" data-screen="routing" onclick="goScreen('routing')"><span class="nav-num">4</span> Referral &amp; Routing</div>
+  <div class="nav-item" data-screen="analytics" onclick="goScreen('analytics')"><span class="nav-num">5</span> Clinic Analytics</div>
+</div>
+
+<div class="content">
+
+  <!-- SCREEN 1 — DASHBOARD -->
+  <div class="screen" id="screen-dashboard">
+    <div class="crumb">Screen 1</div>
+    <h2 class="screen-title">Dashboard / Overview</h2>
+    <div class="grid4" id="dash-kpis"></div>
+    <div class="grid2" style="margin-top:16px;">
+      <div class="panel">
+        <h4 style="margin:0 0 10px;font-size:13.5px;color:var(--c-muted);">Recent patients</h4>
+        <div id="dash-recent"></div>
+      </div>
+      <div class="panel">
+        <h4 style="margin:0 0 10px;font-size:13.5px;color:var(--c-muted);">Pending referrals</h4>
+        <div id="dash-pending"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h4 style="margin:0 0 10px;font-size:13.5px;color:var(--c-muted);">Facility / capacity summary</h4>
+      <div id="dash-capacity" class="grid3"></div>
+    </div>
+    <div class="toolbar" style="margin-top:16px;">
+      <button class="btn primary" onclick="openRegisterModal()">+ Register patient</button>
+      <button class="btn" onclick="goScreen('registry')">Open registry</button>
+      <button class="btn" onclick="goScreen('analytics')">View analytics</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2 — REGISTRY -->
+  <div class="screen" id="screen-registry">
+    <div class="crumb">Screen 2</div>
+    <h2 class="screen-title">Patient Registry</h2>
+    <div class="toolbar">
+      <input class="searchbox" placeholder="Search by name or ID…" oninput="renderRegistry()" id="reg-search" style="flex:1;">
+      <select class="filterselect" id="reg-filter" onchange="renderRegistry()">
+        <option value="">All risk tiers</option>
+        <option value="stable">Stable</option>
+        <option value="watch">Watch</option>
+        <option value="high_risk">High-Risk</option>
+        <option value="unscored">Unscored</option>
+      </select>
+      <button class="btn primary" onclick="openRegisterModal()">+ New patient</button>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Name / ID</th><th>Diagnosis</th><th>Risk tier</th><th>Last visit</th><th>Referral status</th></tr></thead>
+        <tbody id="registry-tbody"></tbody>
+      </table>
+      <div id="registry-empty"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3 — PATIENT PROFILE -->
+  <div class="screen" id="screen-profile">
+    <div class="crumb">Screen 3</div>
+    <h2 class="screen-title">Patient Profile</h2>
+    <div id="profile-body"></div>
+  </div>
+
+  <!-- SCREEN 4 — REFERRAL & ROUTING -->
+  <div class="screen" id="screen-routing">
+    <div class="crumb">Screen 4</div>
+    <h2 class="screen-title">Referral &amp; Facility Routing</h2>
+    <div id="routing-body"></div>
+  </div>
+
+  <!-- SCREEN 5 — ANALYTICS -->
+  <div class="screen" id="screen-analytics">
+    <div class="crumb">Screen 5</div>
+    <h2 class="screen-title">Clinic Analytics</h2>
+    <div class="toolbar">
+      <select class="filterselect">
+        <option>Last 7 days</option><option>Last 30 days</option><option selected>Full sprint to date</option>
+      </select>
+      <span style="font-size:12px;color:var(--c-muted);">Date filtering shown for layout only in this prototype.</span>
+    </div>
+    <div class="grid4" id="analytics-kpis" style="margin-bottom:16px;"></div>
+    <div class="grid2">
+      <div class="panel"><h4 style="margin:0 0 10px;font-size:13.5px;color:var(--c-muted);">Patient volume by risk tier</h4><div id="risk-bars"></div></div>
+      <div class="panel"><h4 style="margin:0 0 10px;font-size:13.5px;color:var(--c-muted);">CHU vs. polyclinic referrals</h4><div id="referral-split"></div></div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h4 style="margin:0 0 10px;font-size:13.5px;color:var(--c-muted);">Facility capacity utilisation</h4>
+      <table><thead><tr><th>Facility</th><th>Type</th><th>Booked / Capacity</th><th>Utilisation</th></tr></thead><tbody id="capacity-table"></tbody></table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ===================== PATIENT SHELL ===================== -->
+<div class="shell" id="patient-shell">
+<div class="phone-frame">
+  <div class="id-picker">
+    <label style="font-size:12.5px;color:var(--p-muted);">Log in with your Patient ID</label>
+    <select id="patient-select" onchange="onPatientPick()">
+      <option value="">Select your name / ID…</option>
+    </select>
+  </div>
+
+  <div id="patient-empty-hint" class="p-empty">Select a patient above to preview their portal.</div>
+
+  <!-- SCREEN 6 -->
+  <div class="p-screen" id="p-screen-status">
+    <div class="p-topline">Screen 6 — Health Status</div>
+    <div id="p-status-body"></div>
+  </div>
+  <!-- SCREEN 7 -->
+  <div class="p-screen" id="p-screen-appt">
+    <div class="p-topline">Screen 7 — Appointment Details</div>
+    <div id="p-appt-body"></div>
+  </div>
+  <!-- SCREEN 8 -->
+  <div class="p-screen" id="p-screen-facility">
+    <div class="p-topline">Screen 8 — Facility &amp; Directions</div>
+    <div id="p-facility-body"></div>
+  </div>
+
+  <div class="footnote">Designed for French / Arabic (RTL) localisation at MVP — this English build is the working demo shell.</div>
+</div>
+<div class="p-nav" id="p-nav" style="display:none;">
+  <button class="active" data-p="status" onclick="goPatientScreen('status')"><span class="p-nav-icon">◔</span>Status</button>
+  <button data-p="appt" onclick="goPatientScreen('appt')"><span class="p-nav-icon">▤</span>Appointment</button>
+  <button data-p="facility" onclick="goPatientScreen('facility')"><span class="p-nav-icon">◎</span>Facility</button>
+</div>
+</div>
+
+<!-- ===================== MODALS ===================== -->
+<div class="modal-backdrop" id="register-modal">
+  <div class="modal">
+    <h3 class="serif" style="margin-top:0;">Register new patient</h3>
+    <div class="field"><label>Full name</label><input id="reg-name" placeholder="e.g. Sofiane Amrani"></div>
+    <div class="field"><label>Date of birth</label><input id="reg-dob" type="date"></div>
+    <div class="field"><label>Sex</label><select id="reg-sex"><option value="f">Female</option><option value="m">Male</option></select></div>
+    <div class="field"><label>Primary NCD diagnosis</label>
+      <select id="reg-diag">
+        <option value="diabetes">Diabetes</option><option value="hypertension">Hypertension</option>
+        <option value="cvd">Cardiovascular disease</option><option value="ckd">Chronic kidney disease</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Home facility</label><select id="reg-facility"></select></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('register-modal')">Cancel</button>
+      <button class="btn primary" onclick="submitRegister()">Register patient</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="lab-modal">
+  <div class="modal">
+    <h3 class="serif" style="margin-top:0;">Log vitals / labs</h3>
+    <div class="field"><label>Type</label>
+      <select id="lab-type">
+        <option value="hba1c">HbA1c (%)</option><option value="bp_systolic">BP systolic (mmHg)</option>
+        <option value="bp_diastolic">BP diastolic (mmHg)</option><option value="bmi">BMI</option>
+        <option value="ldl">LDL (mg/dL)</option><option value="egfr">eGFR</option>
+      </select>
+    </div>
+    <div class="field"><label>Value</label><input id="lab-value" type="number" step="0.1" placeholder="e.g. 7.2"></div>
+    <div id="lab-error" class="explain-box warn" style="display:none;">
+      <span class="glyph">⚠</span> Enter a numeric value before saving — this field can't be blank.
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('lab-modal')">Cancel</button>
+      <button class="btn primary" onclick="submitLab()">Add entry</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="dsys-modal">
+  <div class="modal" style="max-width:640px;">
+    <h3 class="serif" style="margin-top:0;">Component &amp; state reference</h3>
+    <p style="font-size:12.5px;color:var(--c-muted);margin-top:-8px;">Shared design-system pieces reused across the 8 screens — not a screen of their own.</p>
+    <div class="dsys-grid">
+      <div>
+        <div class="dsys-block"><h5>Buttons</h5>
+          <div class="swatch-row">
+            <button class="btn primary">Primary</button><button class="btn">Secondary</button>
+            <button class="btn clay">Clay</button><button class="btn" disabled>Disabled</button>
+          </div>
+        </div>
+        <div class="dsys-block"><h5>Risk-tier badges</h5>
+          <div class="swatch-row">
+            <span class="tier-pill tier-stable">● Stable</span><span class="tier-pill tier-watch">● Watch</span>
+            <span class="tier-pill tier-high_risk">● High-Risk</span><span class="tier-pill tier-unscored">○ Unscored</span>
+          </div>
+        </div>
+        <div class="dsys-block"><h5>Inputs</h5>
+          <input class="searchbox" placeholder="Text input" style="width:100%;margin-bottom:6px;">
+          <select class="filterselect" style="width:100%;"><option>Select input</option></select>
+        </div>
+      </div>
+      <div>
+        <div class="dsys-block"><h5>Loading state</h5>
+          <div class="skeleton" style="height:14px;width:80%;margin-bottom:6px;"></div>
+          <div class="skeleton" style="height:14px;width:55%;"></div>
+        </div>
+        <div class="dsys-block"><h5>Empty state</h5>
+          <div class="empty-state" style="padding:14px;"><span class="glyph">◌</span>No records yet.</div>
+        </div>
+        <div class="dsys-block"><h5>Error state</h5>
+          <div class="error-state" style="padding:14px;"><span class="glyph">⚠</span>Couldn't save — check the value and try again.</div>
+        </div>
+        <div class="dsys-block"><h5>No-capacity state</h5>
+          <div class="explain-box warn">No polyclinic capacity nearby — defaulting to CHU follow-up.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('dsys-modal')">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== DATA MODEL ===================== */
+let facilities = [
+  {id:'F-CHU1', name:'CHU Mustapha Bacha', type:'chu', lat:36.7690, lon:3.0575, weekly_capacity:null, booked_this_week:null},
+  {id:'F-CHU2', name:'CHU Beni Messous',   type:'chu', lat:36.7871, lon:2.9927, weekly_capacity:null, booked_this_week:null},
+  {id:'F-PC1', name:'Polyclinic Hussein Dey', type:'polyclinic', lat:36.7301, lon:3.1073, weekly_capacity:40, booked_this_week:22},
+  {id:'F-PC2', name:'Polyclinic El Biar',     type:'polyclinic', lat:36.7663, lon:3.0322, weekly_capacity:35, booked_this_week:34},
+  {id:'F-PC3', name:'Polyclinic Bab Ezzouar', type:'polyclinic', lat:36.7168, lon:3.1866, weekly_capacity:50, booked_this_week:10},
+  {id:'F-PC4', name:'Polyclinic Kouba',       type:'polyclinic', lat:36.7266, lon:3.0906, weekly_capacity:30, booked_this_week:30},
+  {id:'F-PC5', name:'Polyclinic Birkhadem',   type:'polyclinic', lat:36.7186, lon:3.0431, weekly_capacity:45, booked_this_week:20},
+];
+
+let patients = [
+  {id:'P-1001', name:'Yasmine Belkacem', dob:'1974-03-11', sex:'f', diagnosis:'diabetes', home:'F-CHU1',
+    labs:[{type:'hba1c',value:6.4,recorded_at:'2026-08-02'}], referral:null},
+  {id:'P-1002', name:'Ahmed Zerouali', dob:'1968-11-02', sex:'m', diagnosis:'diabetes', home:'F-CHU1',
+    labs:[{type:'hba1c',value:7.8,recorded_at:'2026-08-04'},{type:'bp_systolic',value:138,recorded_at:'2026-08-04'}], referral:null},
+  {id:'P-1003', name:'Malika Cherif', dob:'1961-06-20', sex:'f', diagnosis:'diabetes', home:'F-CHU2',
+    labs:[{type:'hba1c',value:9.1,recorded_at:'2026-08-05'},{type:'bp_systolic',value:165,recorded_at:'2026-08-05'},{type:'bp_diastolic',value:102,recorded_at:'2026-08-05'}], referral:null},
+  {id:'P-1004', name:'Nadir Boudiaf', dob:'1970-01-15', sex:'m', diagnosis:'hypertension', home:'F-CHU1',
+    labs:[{type:'bp_systolic',value:150,recorded_at:'2026-08-06'},{type:'bp_diastolic',value:95,recorded_at:'2026-08-06'}], referral:null},
+  {id:'P-1005', name:'Sofiane Amrani', dob:'1958-09-09', sex:'m', diagnosis:'cvd', home:'F-CHU2',
+    labs:[{type:'bp_systolic',value:128,recorded_at:'2026-08-07'},{type:'ldl',value:118,recorded_at:'2026-08-07'}], referral:null},
+  {id:'P-1006', name:'Djamila Saidi', dob:'1980-04-28', sex:'f', diagnosis:'diabetes', home:'F-CHU1',
+    labs:[], referral:null},
+];
+
+let selectedPatientId = null;
+let currentClinicScreen = 'dashboard';
+let currentPatientScreen = 'status';
+
+const diagLabels = {diabetes:'Diabetes', hypertension:'Hypertension', cvd:'Cardiovascular disease', ckd:'Chronic kidney disease', other:'Other NCD'};
+const labLabels = {hba1c:'HbA1c (%)', bp_systolic:'BP systolic (mmHg)', bp_diastolic:'BP diastolic (mmHg)', bmi:'BMI', ldl:'LDL (mg/dL)', egfr:'eGFR'};
+
+/* ===================== RISK ENGINE ===================== */
+function latestValue(labs, type){
+  const entries = labs.filter(l=>l.type===type).sort((a,b)=>new Date(b.recorded_at)-new Date(a.recorded_at));
+  return entries.length ? entries[0].value : null;
+}
+function computeRisk(patient){
+  const labs = patient.labs;
+  if(labs.length===0) return {tier:'unscored', rules:['No labs recorded yet — status pending first check-up.']};
+  const hba1c = latestValue(labs,'hba1c'), sys = latestValue(labs,'bp_systolic'), dia = latestValue(labs,'bp_diastolic');
+  const rules = []; let tier = 'stable';
+  if(patient.diagnosis === 'diabetes'){
+    if(hba1c===null) return {tier:'unscored', rules:['Diabetes patient with no HbA1c on file yet.']};
+    if(hba1c > 8.5 || (sys!==null && sys>160) || (dia!==null && dia>100)){
+      tier='high_risk';
+      if(hba1c>8.5) rules.push(`HbA1c ${hba1c}% is above 8.5% — high-risk threshold.`);
+      if(sys!==null && sys>160) rules.push(`Systolic BP ${sys} mmHg exceeds 160 mmHg.`);
+      if(dia!==null && dia>100) rules.push(`Diastolic BP ${dia} mmHg exceeds 100 mmHg.`);
+    } else if(hba1c >= 7.0 || (sys!==null && sys>=130)){
+      tier='watch';
+      if(hba1c>=7.0) rules.push(`HbA1c ${hba1c}% is in the 7.0–8.5% watch band.`);
+      if(sys!==null && sys>=130) rules.push(`Systolic BP ${sys} mmHg is borderline.`);
+    } else rules.push(`HbA1c ${hba1c}% is below 7.0% with no other flags.`);
+  } else if(patient.diagnosis === 'hypertension'){
+    if(sys===null && dia===null) return {tier:'unscored', rules:['Hypertension patient with no blood pressure reading on file yet.']};
+    if((sys!==null && sys>=160) || (dia!==null && dia>=100)){ tier='high_risk'; rules.push(`Blood pressure ${sys??'—'}/${dia??'—'} mmHg is at or above 160/100.`); }
+    else if((sys!==null && sys>=130) || (dia!==null && dia>=85)){ tier='watch'; rules.push(`Blood pressure ${sys??'—'}/${dia??'—'} mmHg is in the 130–159/85–99 watch band.`); }
+    else rules.push(`Blood pressure ${sys??'—'}/${dia??'—'} mmHg is below 130/85.`);
+  } else {
+    if(sys===null && dia===null) return {tier:'unscored', rules:['No vitals on file yet for this diagnosis.']};
+    if((sys!==null && sys>=160) || (dia!==null && dia>=100)){ tier='high_risk'; rules.push(`Blood pressure ${sys??'—'}/${dia??'—'} mmHg is at or above 160/100.`); }
+    else if(sys!==null && sys>=135){ tier='watch'; rules.push(`Blood pressure ${sys??'—'}/${dia??'—'} mmHg is borderline for this diagnosis.`); }
+    else rules.push(`Vitals on file are within the generic stable range for this diagnosis (diagnosis-specific rule set is an open item — see PRD Section 14).`);
+  }
+  return {tier, rules};
+}
+
+/* ===================== ROUTING ENGINE ===================== */
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function rankFacilities(patient){
+  const home = facilities.find(f=>f.id===patient.home);
+  const eligible = facilities.filter(f=>f.type==='polyclinic' && (f.weekly_capacity - f.booked_this_week) > 0);
+  if(eligible.length===0) return [];
+  const withDist = eligible.map(f=>({...f, dist:haversine(home.lat,home.lon,f.lat,f.lon)}));
+  const maxDist = Math.max(...withDist.map(f=>f.dist)) || 1;
+  const w1=0.6, w2=0.4;
+  return withDist.map(f=>{
+    const normDist = f.dist / maxDist;
+    const availCap = (f.weekly_capacity - f.booked_this_week) / f.weekly_capacity;
+    return {...f, score: w1*(1-normDist) + w2*availCap};
+  }).sort((a,b)=>b.score-a.score).slice(0,3);
+}
+
+/* ===================== SHARED HELPERS ===================== */
+function ageFromDob(dob){
+  const d=new Date(dob), now=new Date();
+  let age = now.getFullYear()-d.getFullYear();
+  if(now.getMonth()<d.getMonth() || (now.getMonth()===d.getMonth() && now.getDate()<d.getDate())) age--;
+  return age;
+}
+function tierPillHtml(tier){
+  const labels = {stable:'● Stable', watch:'● Watch', high_risk:'● High-Risk', unscored:'○ Unscored'};
+  return `<span class="tier-pill tier-${tier}">${labels[tier]}</span>`;
+}
+function lastLabDate(p){
+  if(!p.labs.length) return null;
+  return p.labs.slice().sort((a,b)=>new Date(b.recorded_at)-new Date(a.recorded_at))[0].recorded_at;
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+/* ===================== CLINIC NAV ===================== */
+function goScreen(screen, opts={}){
+  currentClinicScreen = screen;
+  document.querySelectorAll('.sidenav .nav-item').forEach(el=>el.classList.toggle('active', el.dataset.screen===screen));
+  document.querySelectorAll('.content .screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById('screen-'+screen).classList.add('active');
+  render(screen);
+}
+
+function render(screen){
+  if(screen==='dashboard') renderDashboard();
+  if(screen==='registry') renderRegistry();
+  if(screen==='profile') renderProfile();
+  if(screen==='routing') renderRouting();
+  if(screen==='analytics') renderAnalyticsScreen();
+}
+
+/* ===================== SCREEN 1: DASHBOARD ===================== */
+function renderDashboard(){
+  const tiers = {stable:0, watch:0, high_risk:0, unscored:0};
+  patients.forEach(p=>tiers[computeRisk(p).tier]++);
+  const pendingReferrals = patients.filter(p=>computeRisk(p).tier==='stable' && !p.referral);
+  const nearCapacity = facilities.filter(f=>f.type==='polyclinic' && (f.booked_this_week/f.weekly_capacity)>=0.9).length;
+
+  document.getElementById('dash-kpis').innerHTML = `
+    <div class="kpi-card"><div class="kpi-num">${patients.length}</div><div class="kpi-label">Total NCD patients</div></div>
+    <div class="kpi-card"><div class="kpi-num" style="color:var(--clay);">${tiers.high_risk}</div><div class="kpi-label">High-Risk patients</div></div>
+    <div class="kpi-card"><div class="kpi-num" style="color:var(--ochre);">${pendingReferrals.length}</div><div class="kpi-label">Pending referrals</div></div>
+    <div class="kpi-card"><div class="kpi-num">${nearCapacity}</div><div class="kpi-label">Polyclinics near capacity</div></div>
+  `;
+
+  const recent = patients.slice().sort((a,b)=>{
+    const da = lastLabDate(a), db = lastLabDate(b);
+    if(!da && !db) return 0; if(!da) return 1; if(!db) return -1;
+    return new Date(db)-new Date(da);
+  }).slice(0,5);
+  document.getElementById('dash-recent').innerHTML = recent.map(p=>`
+    <div class="patient-card-row" onclick="openProfile('${p.id}')">
+      <div><div style="font-size:13.5px;">${p.name}</div><div style="font-size:11px;color:var(--c-muted);">${lastLabDate(p) || 'No labs yet'}</div></div>
+      ${tierPillHtml(computeRisk(p).tier)}
+    </div>`).join('') || `<div class="empty-state"><span class="glyph">◌</span>No patients registered yet.</div>`;
+
+  document.getElementById('dash-pending').innerHTML = pendingReferrals.length ? pendingReferrals.map(p=>`
+    <div class="patient-card-row" onclick="openRouting('${p.id}')">
+      <div style="font-size:13.5px;">${p.name}</div>
+      <button class="btn small primary">Route →</button>
+    </div>`).join('') : `<div class="empty-state"><span class="glyph">✓</span>Nothing waiting — every stable patient has a referral.</div>`;
+
+  document.getElementById('dash-capacity').innerHTML = facilities.filter(f=>f.type==='polyclinic').map(f=>{
+    const pct = Math.round((f.booked_this_week/f.weekly_capacity)*100);
+    const cls = pct>=95?'heat-full':pct>=75?'heat-mid':'heat-good';
+    return `<div class="subpanel"><div style="font-size:13px;font-weight:600;">${f.name}</div><div class="${cls}" style="font-size:12.5px;margin-top:4px;">${f.booked_this_week}/${f.weekly_capacity} slots · ${pct}% full</div></div>`;
+  }).join('');
+}
+
+/* ===================== SCREEN 2: REGISTRY ===================== */
+function renderRegistry(){
+  const q = (document.getElementById('reg-search')?.value || '').toLowerCase();
+  const filterTier = document.getElementById('reg-filter')?.value || '';
+  const rows = patients.filter(p=>{
+    const risk = computeRisk(p);
+    if(filterTier && risk.tier!==filterTier) return false;
+    return p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
+  });
+  const tbody = document.getElementById('registry-tbody');
+  const emptyBox = document.getElementById('registry-empty');
+  if(rows.length===0){
+    tbody.innerHTML = '';
+    emptyBox.innerHTML = `<div class="empty-state"><span class="glyph">◌</span>No patients match this search or filter.</div>`;
+    return;
+  }
+  emptyBox.innerHTML = '';
+  tbody.innerHTML = rows.map(p=>{
+    const risk = computeRisk(p);
+    const refStatus = p.referral ? 'Confirmed' : (risk.tier==='stable' ? 'Pending' : '—');
+    return `<tr class="clickable" onclick="openProfile('${p.id}')">
+      <td><strong>${p.name}</strong><br><span style="color:var(--c-muted);font-size:11.5px;">${p.id}</span></td>
+      <td>${diagLabels[p.diagnosis]}</td>
+      <td>${tierPillHtml(risk.tier)}</td>
+      <td>${lastLabDate(p) || '—'}</td>
+      <td>${refStatus}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ===================== SCREEN 3: PROFILE ===================== */
+function openProfile(id){ selectedPatientId = id; goScreen('profile'); }
+function renderProfile(){
+  const body = document.getElementById('profile-body');
+  const p = patients.find(x=>x.id===selectedPatientId);
+  if(!p){ body.innerHTML = `<div class="empty-state"><span class="glyph">◌</span>No patient selected. Open a patient from the Registry or Dashboard first.<br><br><button class="btn primary" onclick="goScreen('registry')">Go to Registry</button></div>`; return; }
+  const risk = computeRisk(p);
+  const home = facilities.find(f=>f.id===p.home);
+  const labRows = p.labs.slice().sort((a,b)=>new Date(b.recorded_at)-new Date(a.recorded_at))
+    .map(l=>`<tr><td>${labLabels[l.type]}</td><td>${l.value}</td><td>${l.recorded_at}</td></tr>`).join('');
+  const referralLine = p.referral
+    ? `<div class="explain-box" style="border-color:var(--sage);">Referred to <strong>${facilities.find(f=>f.id===p.referral.facility_id).name}</strong> — appointment ${p.referral.date}.</div>`
+    : `<div class="explain-box">No referral on file yet.</div>`;
+
+  body.innerHTML = `
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h3 class="serif" style="margin:0 0 4px;font-size:20px;">${p.name}</h3>
+          <div style="font-size:12.5px;color:var(--c-muted);">${p.id} · ${ageFromDob(p.dob)} yrs · ${p.sex==='f'?'Female':'Male'} · ${diagLabels[p.diagnosis]} · Home: ${home.name}</div>
+        </div>
+        ${tierPillHtml(risk.tier)}
+      </div>
+      <div class="explain-box">${risk.rules.map(r=>'· '+r).join('<br>')}</div>
+      ${referralLine}
+      <div class="grid2" style="margin-top:14px;">
+        <div class="subpanel">
+          <h4 style="margin:0 0 10px;font-size:13px;color:var(--c-muted);">Lab &amp; vitals history</h4>
+          ${p.labs.length ? `<table><thead><tr><th>Type</th><th>Value</th><th>Date</th></tr></thead><tbody>${labRows}</tbody></table>`
+            : `<div class="empty-state"><span class="glyph">◌</span>No entries yet — this patient's status is Unscored.</div>`}
+          <button class="btn small" style="margin-top:10px;" onclick="openLabModal()">+ Log vitals / labs</button>
+        </div>
+        <div class="subpanel">
+          <h4 style="margin:0 0 10px;font-size:13px;color:var(--c-muted);">Clinical actions</h4>
+          <button class="btn ${risk.tier==='stable'?'primary':''}" ${risk.tier==='stable'?'':'disabled'} style="width:100%;margin-bottom:8px;" onclick="openRouting('${p.id}')">Go to Referral &amp; Routing</button>
+          <p style="font-size:12px;color:var(--c-muted);margin:0;">${risk.tier==='stable' ? 'Eligible for polyclinic follow-up.' : 'Only Stable patients can be routed — Watch and High-Risk stay with the CHU.'}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ===================== SCREEN 4: REFERRAL & ROUTING ===================== */
+function openRouting(id){ selectedPatientId = id; goScreen('routing'); }
+function renderRouting(){
+  const body = document.getElementById('routing-body');
+  const p = patients.find(x=>x.id===selectedPatientId);
+  if(!p){ body.innerHTML = `<div class="empty-state"><span class="glyph">◌</span>No patient selected. Open a patient's profile first.<br><br><button class="btn primary" onclick="goScreen('registry')">Go to Registry</button></div>`; return; }
+  const risk = computeRisk(p);
+  const canRoute = risk.tier==='stable';
+  body.innerHTML = `
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <h3 class="serif" style="margin:0 0 4px;font-size:18px;">${p.name}</h3>
+          <div style="font-size:12px;color:var(--c-muted);">${p.id} · ${diagLabels[p.diagnosis]}</div>
+        </div>
+        ${tierPillHtml(risk.tier)}
+      </div>
+      <div class="explain-box">${canRoute ? 'Stable — eligible for polyclinic follow-up.' : 'Watch and High-Risk patients are hard-blocked from polyclinic routing by design and stay with the CHU.'}</div>
+      <button class="btn primary" style="margin-top:12px;" ${canRoute?'':'disabled'} onclick="routeFollowUp()">Route Follow-Up</button>
+      <div id="route-list" style="margin-top:14px;"></div>
+    </div>
+  `;
+}
+function routeFollowUp(){
+  const box = document.getElementById('route-list');
+  box.innerHTML = `<div class="skeleton" style="height:52px;margin-bottom:8px;"></div><div class="skeleton" style="height:52px;margin-bottom:8px;"></div><div class="skeleton" style="height:52px;"></div>`;
+  setTimeout(()=>{
+    const p = patients.find(x=>x.id===selectedPatientId);
+    const ranked = rankFacilities(p);
+    if(ranked.length===0){
+      box.innerHTML = `<div class="explain-box warn"><span class="glyph">⚠</span> No polyclinic capacity available nearby right now. Defaulting to CHU follow-up — the patient is never silently dropped.</div>`;
+      return;
+    }
+    box.innerHTML = ranked.map(f=>`
+      <div class="route-card">
+        <div>
+          <div class="fname">${f.name}</div>
+          <div class="fmeta">${f.dist.toFixed(1)} km · ${f.weekly_capacity - f.booked_this_week} of ${f.weekly_capacity} slots open · score ${f.score.toFixed(2)}</div>
+          <div class="score-bar"><span style="width:${Math.round(f.score*100)}%"></span></div>
+        </div>
+        <button class="btn small primary" onclick="confirmReferral('${f.id}')">Confirm</button>
+      </div>`).join('');
+  }, 550);
+}
+function confirmReferral(facilityId){
+  const p = patients.find(x=>x.id===selectedPatientId);
+  const f = facilities.find(x=>x.id===facilityId);
+  f.booked_this_week += 1;
+  const d = new Date(); d.setDate(d.getDate()+(3+Math.floor(Math.random()*5)));
+  p.referral = {facility_id:facilityId, date:d.toISOString().slice(0,10)+' · 10:00', status:'confirmed'};
+  showToast(`Referral confirmed at ${f.name}`);
+  renderRouting();
+}
+
+/* ===================== SCREEN 5: ANALYTICS ===================== */
+function renderAnalyticsScreen(){
+  const tiers = {stable:0, watch:0, high_risk:0, unscored:0};
+  patients.forEach(p=>tiers[computeRisk(p).tier]++);
+  const total = patients.length || 1;
+  const referred = patients.filter(p=>p.referral).length;
+
+  document.getElementById('analytics-kpis').innerHTML = `
+    <div class="kpi-card"><div class="kpi-num">${patients.length}</div><div class="kpi-label">Patients tracked</div></div>
+    <div class="kpi-card"><div class="kpi-num">${referred}</div><div class="kpi-label">Referrals confirmed</div></div>
+    <div class="kpi-card"><div class="kpi-num">${Math.round((tiers.stable/total)*100)}%</div><div class="kpi-label">Cohort Stable</div></div>
+    <div class="kpi-card"><div class="kpi-num">${facilities.filter(f=>f.type==='polyclinic' && (f.booked_this_week/f.weekly_capacity)>=1).length}</div><div class="kpi-label">Facilities at capacity</div></div>
+  `;
+
+  const tierColors = {stable:'var(--sage)', watch:'var(--ochre)', high_risk:'var(--clay)', unscored:'var(--stone)'};
+  const tierLabels = {stable:'Stable', watch:'Watch', high_risk:'High-Risk', unscored:'Unscored'};
+  document.getElementById('risk-bars').innerHTML = Object.keys(tiers).map(t=>`
+    <div class="bar-row"><div class="bar-label">${tierLabels[t]}</div>
+      <div class="bar-track"><div style="width:${(tiers[t]/total)*100}%;background:${tierColors[t]};height:100%;"></div></div>
+      <div class="bar-count">${tiers[t]}</div></div>`).join('');
+
+  const chuCount = patients.filter(p=>p.referral && facilities.find(f=>f.id===p.referral.facility_id).type==='chu').length;
+  const polyCount = patients.filter(p=>p.referral && facilities.find(f=>f.id===p.referral.facility_id).type==='polyclinic').length;
+  const noneCount = patients.length - chuCount - polyCount;
+  document.getElementById('referral-split').innerHTML = `
+    <div class="bar-row"><div class="bar-label">Polyclinic</div><div class="bar-track"><div style="width:${(polyCount/total)*100}%;background:var(--sage);height:100%;"></div></div><div class="bar-count">${polyCount}</div></div>
+    <div class="bar-row"><div class="bar-label">CHU-retained</div><div class="bar-track"><div style="width:${(chuCount/total)*100}%;background:var(--ochre);height:100%;"></div></div><div class="bar-count">${chuCount}</div></div>
+    <div class="bar-row"><div class="bar-label">Not yet routed</div><div class="bar-track"><div style="width:${(noneCount/total)*100}%;background:var(--stone);height:100%;"></div></div><div class="bar-count">${noneCount}</div></div>
+  `;
+
+  document.getElementById('capacity-table').innerHTML = facilities.map(f=>{
+    if(f.type==='chu') return `<tr><td>${f.name}</td><td>CHU</td><td>—</td><td style="color:var(--c-muted);">No capacity limit (specialist care)</td></tr>`;
+    const pct = Math.round((f.booked_this_week/f.weekly_capacity)*100);
+    const cls = pct>=95?'heat-full':pct>=75?'heat-mid':'heat-good';
+    return `<tr><td>${f.name}</td><td>Polyclinic</td><td>${f.booked_this_week} / ${f.weekly_capacity}</td><td class="${cls}">${pct}% full</td></tr>`;
+  }).join('');
+}
+
+/* ===================== MODALS ===================== */
+function openRegisterModal(){
+  const sel = document.getElementById('reg-facility');
+  sel.innerHTML = facilities.filter(f=>f.type==='chu').map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+  document.getElementById('register-modal').classList.add('active');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function submitRegister(){
+  const name = document.getElementById('reg-name').value.trim();
+  const dob = document.getElementById('reg-dob').value;
+  if(!name || !dob){ showToast('Name and date of birth are required'); return; }
+  const newId = 'P-' + (1000 + patients.length + 1);
+  patients.push({ id:newId, name, dob, sex:document.getElementById('reg-sex').value,
+    diagnosis:document.getElementById('reg-diag').value, home:document.getElementById('reg-facility').value,
+    labs:[], referral:null });
+  closeModal('register-modal');
+  selectedPatientId = newId;
+  populatePatientSelect();
+  render(currentClinicScreen);
+  showToast(`Registered ${name} — ${newId}`);
+}
+function openLabModal(){ document.getElementById('lab-error').style.display='none'; document.getElementById('lab-modal').classList.add('active'); }
+function submitLab(){
+  const type = document.getElementById('lab-type').value;
+  const value = parseFloat(document.getElementById('lab-value').value);
+  if(isNaN(value)){ document.getElementById('lab-error').style.display='block'; return; }
+  const p = patients.find(x=>x.id===selectedPatientId);
+  p.labs.push({type, value, recorded_at:new Date().toISOString().slice(0,10)});
+  closeModal('lab-modal');
+  document.getElementById('lab-value').value='';
+  render(currentClinicScreen);
+  showToast('Lab entry added — risk score recalculated');
+}
+function openDsys(){ document.getElementById('dsys-modal').classList.add('active'); }
+
+/* ===================== PATIENT PORTAL ===================== */
+function populatePatientSelect(){
+  const sel = document.getElementById('patient-select');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Select your name / ID…</option>' + patients.map(p=>`<option value="${p.id}">${p.name} — ${p.id}</option>`).join('');
+  if(patients.some(p=>p.id===current)) sel.value = current;
+}
+const statusCopy = {
+  stable: {icon:'✓', title:'Your levels are stable', text:'Keep up your regular routine. Please attend your next check-in on time so your care team can confirm you\'re still on track.'},
+  watch: {icon:'!', title:'Your levels need a closer look', text:'Nothing urgent — but please keep your upcoming appointment so your care team can review your progress and adjust your plan if needed.'},
+  high_risk: {icon:'✚', title:'Your care team wants to see you soon', text:'Please plan to visit the hospital for a closer review rather than a local clinic this time. A team member may also contact you directly.'},
+  unscored: {icon:'…', title:'We\'re still collecting your information', text:'Your status will appear here as soon as your first vitals or lab results are on file. Please attend your first check-up appointment.'}
+};
+function onPatientPick(){
+  const id = document.getElementById('patient-select').value;
+  const hint = document.getElementById('patient-empty-hint');
+  const nav = document.getElementById('p-nav');
+  if(!id){
+    hint.style.display='block'; nav.style.display='none';
+    document.querySelectorAll('.p-screen').forEach(s=>s.classList.remove('active'));
+    return;
+  }
+  hint.style.display='none'; nav.style.display='flex';
+  goPatientScreen('status');
+}
+function goPatientScreen(screen){
+  currentPatientScreen = screen;
+  document.querySelectorAll('#p-nav button').forEach(b=>b.classList.toggle('active', b.dataset.p===screen));
+  document.querySelectorAll('.p-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('p-screen-'+screen).classList.add('active');
+  if(screen==='status') renderPatientStatus();
+  if(screen==='appt') renderPatientAppt();
+  if(screen==='facility') renderPatientFacility();
+}
+function currentPatient(){ return patients.find(p=>p.id===document.getElementById('patient-select').value); }
+
+function renderPatientStatus(){
+  const p = currentPatient(); if(!p) return;
+  const risk = computeRisk(p); const copy = statusCopy[risk.tier];
+  const labRows = p.labs.map(l=>`<tr><td>${labLabels[l.type]}</td><td>${l.value}</td></tr>`).join('');
+  document.getElementById('p-status-body').innerHTML = `
+    <div class="status-card ${risk.tier}">
+      <div class="icon">${copy.icon}</div>
+      <h3 class="serif">${copy.title}</h3>
+      <p>${copy.text}</p>
+    </div>
+    <div class="p-card">
+      <h4>Primary condition</h4>
+      <div class="p-fact">${diagLabels[p.diagnosis]}</div>
+    </div>
+    ${p.labs.length ? `<div class="p-card"><h4>Latest health information</h4><table>${labRows}</table></div>` : ''}
+    <div class="p-card">
+      <h4>Next appointment</h4>
+      ${p.referral ? `<div class="p-fact">${facilities.find(f=>f.id===p.referral.facility_id).name}</div><div class="p-fact dim">${p.referral.date}</div>`
+        : `<div class="p-empty">No upcoming appointment yet.</div>`}
+      <button class="btn ghost small" style="margin-top:8px;" onclick="goPatientScreen('appt')">View appointment details →</button>
+    </div>
+  `;
+}
+function renderPatientAppt(){
+  const p = currentPatient(); if(!p) return;
+  const body = document.getElementById('p-appt-body');
+  if(!p.referral){
+    body.innerHTML = `<div class="p-card"><span class="status-tag none">No appointment</span><div class="p-empty">Your clinician hasn't scheduled your next visit yet. Check back after your next check-up, or contact your hospital.</div></div>`;
+    return;
+  }
+  const f = facilities.find(x=>x.id===p.referral.facility_id);
+  const [date,time] = p.referral.date.split(' · ');
+  body.innerHTML = `
+    <div class="p-card">
+      <span class="status-tag confirmed">Confirmed</span>
+      <div class="p-fact" style="font-size:18px;font-weight:600;">${f.name}</div>
+      <div class="p-fact dim">${f.type==='chu' ? 'Hospital follow-up' : 'Neighbourhood polyclinic follow-up'}</div>
+      <div class="p-fact" style="margin-top:10px;">${date} at ${time}</div>
+      <div class="p-fact dim">Bring your ID and any recent prescriptions.</div>
+      <button class="btn ghost small" style="margin-top:12px;" onclick="goPatientScreen('facility')">See facility &amp; directions →</button>
+    </div>`;
+}
+function renderPatientFacility(){
+  const p = currentPatient(); if(!p) return;
+  const body = document.getElementById('p-facility-body');
+  const facilityId = p.referral ? p.referral.facility_id : p.home;
+  const f = facilities.find(x=>x.id===facilityId);
+  body.innerHTML = `
+    <div class="p-card">
+      <div class="fake-map"><span class="pin">📍</span>&nbsp;Map preview (demo placeholder)</div>
+      <div class="p-fact" style="font-size:17px;font-weight:600;">${f.name}</div>
+      <div class="p-fact dim">${f.type==='chu' ? 'University hospital' : 'Neighbourhood polyclinic'} · approx. ${haversine(36.75,3.06,f.lat,f.lon).toFixed(1)} km from city centre</div>
+      <button class="directions-btn" style="margin-top:14px;" onclick="showToast('Opening turn-by-turn directions… (demo)')">Get directions</button>
+    </div>`;
+}
+
+/* ===================== MODE SWITCH ===================== */
+function switchMode(mode){
+  document.body.classList.toggle('patient-mode', mode==='patient');
+  document.querySelector('.clinic-btn').classList.toggle('active', mode==='clinic');
+  document.querySelector('.patient-btn').classList.toggle('active', mode==='patient');
+  document.getElementById('clinic-shell').classList.toggle('active', mode==='clinic');
+  document.getElementById('patient-shell').classList.toggle('active', mode==='patient');
+}
+
+/* ===================== INIT ===================== */
+populatePatientSelect();
+goScreen('dashboard');
+</script>
+</body>
+</html>
